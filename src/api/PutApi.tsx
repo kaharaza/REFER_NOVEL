@@ -126,6 +126,7 @@ export const PutUpdateVetProfile = async (payload: PayloadUpdateVetProfile) => {
 export const PutUpdatePremission = async (payload: {
   adminId: string;
   permissions: string[];
+  role?: string;
 }) => {
   try {
     const encryptedDataQuery = encryptDataNew(payload);

@@ -87,18 +87,13 @@ const ROLE_CONFIG: Record<
     badgeStyle: "bg-rose-50 text-rose-700 border border-rose-200",
     avatarStyle: "bg-rose-600",
   },
-  MANAGER: {
-    label: "ผู้จัดการ",
-    badgeStyle: "bg-amber-50 text-amber-700 border border-amber-200",
-    avatarStyle: "bg-amber-600",
-  },
-  STAFF: {
+  COUNTER: {
     label: "เจ้าหน้าที่",
     badgeStyle: "bg-blue-50 text-blue-700 border border-blue-200",
     avatarStyle: "bg-blue-600",
   },
-  VIEWER: {
-    label: "ผู้ดูข้อมูล",
+  USER: {
+    label: "ผู้ใช้งานทั่วไป",
     badgeStyle: "bg-slate-100 text-slate-600 border border-slate-200",
     avatarStyle: "bg-slate-500",
   },
@@ -119,6 +114,8 @@ export default function PermissionData() {
 
   // per-user unsaved changes: Record<userId, Set<permKey>>
   const [dirtyPerms, setDirtyPerms] = useState<Record<string, Set<string>>>({});
+  // per-user unsaved role changes: Record<userId, newRole>
+  const [dirtyRoles, setDirtyRoles] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
 
@@ -187,11 +184,22 @@ export default function PermissionData() {
     return new Set(accounts.find((a) => a.id === userId)?.permissions ?? []);
   };
 
+  const getActiveRole = (userId: string): string => {
+    if (dirtyRoles[userId]) return dirtyRoles[userId];
+    return accounts.find((a) => a.id === userId)?.role ?? "";
+  };
+
   const activePerms = selectedId
     ? getActivePerms(selectedId)
     : new Set<string>();
 
+  const activeRole = selectedId ? getActiveRole(selectedId) : "";
+
   const isDirtyUser = (userId: string): boolean => {
+    if (!dirtyPerms[userId] && !dirtyRoles[userId]) return false;
+    const originalRole = accounts.find((a) => a.id === userId)?.role ?? "";
+    const currentRole = dirtyRoles[userId];
+    if (currentRole && currentRole !== originalRole) return true;
     if (!dirtyPerms[userId]) return false;
     const original = new Set(
       accounts.find((a) => a.id === userId)?.permissions ?? [],
@@ -216,6 +224,13 @@ export default function PermissionData() {
     setSavedId(null);
   };
 
+  const changeRole = (newRole: string) => {
+    if (!selectedId) return;
+    const id = selectedId;
+    setDirtyRoles((prev) => ({ ...prev, [id]: newRole }));
+    setSavedId(null);
+  };
+
   const toggleGroupAll = (keys: string[], allOn: boolean) => {
     if (!selectedId) return;
     const id = selectedId;
@@ -235,6 +250,10 @@ export default function PermissionData() {
       const { [id]: _, ...rest } = prev;
       return rest;
     });
+    setDirtyRoles((prev) => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
     setSavedId(null);
   };
 
@@ -242,11 +261,11 @@ export default function PermissionData() {
     if (!selectedId) return;
     const id = selectedId;
     setSavingId(id);
-    // TODO: call UpdatePermission API → Array.from(getActivePerms(id))
 
     const payload = {
       adminId: id,
       permissions: Array.from(getActivePerms(id)),
+      ...(dirtyRoles[id] && { role: dirtyRoles[id] }),
     };
 
     const resp = await PutUpdatePremission(payload);
@@ -258,6 +277,7 @@ export default function PermissionData() {
         setIsLoading(false);
         setMessages("");
       }, 2000);
+      setSavingId(null);
       return;
     }
 
@@ -265,10 +285,20 @@ export default function PermissionData() {
     // Update local baseline so reset works from saved state
     setAccounts((prev) =>
       prev.map((a) =>
-        a.id === id ? { ...a, permissions: Array.from(getActivePerms(id)) } : a,
+        a.id === id
+          ? {
+              ...a,
+              permissions: Array.from(getActivePerms(id)),
+              role: getActiveRole(id),
+            }
+          : a,
       ),
     );
     setDirtyPerms((prev) => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
+    setDirtyRoles((prev) => {
       const { [id]: _, ...rest } = prev;
       return rest;
     });
@@ -387,7 +417,7 @@ export default function PermissionData() {
               <div className="bg-white rounded-xl border border-slate-200 p-5">
                 <div className="flex items-center gap-4">
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-bold shrink-0 select-none ${getRoleCfg(selectedAccount.role).avatarStyle}`}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-bold shrink-0 select-none ${getRoleCfg(activeRole).avatarStyle}`}
                   >
                     {selectedAccount.name.charAt(0)}
                   </div>
@@ -397,9 +427,9 @@ export default function PermissionData() {
                         {selectedAccount.name}
                       </span>
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-md font-semibold ${getRoleCfg(selectedAccount.role).badgeStyle}`}
+                        className={`text-xs px-2 py-0.5 rounded-md font-semibold ${getRoleCfg(activeRole).badgeStyle}`}
                       >
-                        {getRoleCfg(selectedAccount.role).label}
+                        {getRoleCfg(activeRole).label}
                       </span>
                     </div>
                     <p className="text-sm text-slate-500 mt-0.5">
@@ -424,6 +454,26 @@ export default function PermissionData() {
                       </span>
                     </span>
                   </div>
+                </div>
+
+                {/* Role selector */}
+                <div className="mt-5 pt-5 border-t border-slate-100">
+                  <label className="text-xs font-semibold text-slate-500 tracking-wide uppercase block mb-2">
+                    เปลี่ยนบทบาท
+                  </label>
+                  <select
+                    value={activeRole}
+                    onChange={(e) => changeRole(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-800
+                      bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent
+                      cursor-pointer transition-colors duration-150"
+                  >
+                    {Object.entries(ROLE_CONFIG).map(([roleKey, roleCfg]) => (
+                      <option key={roleKey} value={roleKey}>
+                        {roleCfg.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
