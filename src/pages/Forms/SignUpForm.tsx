@@ -55,6 +55,18 @@ export default function SignUpForm() {
   );
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [addWorkloction, setAddWorkloction] = useState<boolean>(false);
+
+  // === License sub-fields ===
+  const [licensePrefix, setLicensePrefix] = useState("");
+  const [licenseMid, setLicenseMid] = useState("");
+  const [licenseYear, setLicenseYear] = useState("");
+  const [licenseVerified, setLicenseVerified] = useState(false);
+  const [licenseSubErrors, setLicenseSubErrors] = useState({
+    prefix: "",
+    mid: "",
+    year: "",
+  });
+
   const [passwordStrength, setPasswordStrength] = useState({
     hasSpecialChar: false,
     hasUppercase: false,
@@ -277,11 +289,11 @@ export default function SignUpForm() {
       showToast.error("รูปแบบอีเมลไม่ถูกต้อง");
     }
     if (!formData.ceLicense.trim()) {
-      newErrors.ceLicense = "กรุณากรอกรหัสสัตวแพทย์";
-      showToast.error("กรุณากรอกรหัสสัตวแพทย์");
-    } else if (!/^\d{2}-\d{7}\/\d{4}$/.test(formData.ceLicense.trim())) {
-      newErrors.ceLicense = "รูปแบบรหัสไม่ถูกต้อง (ตัวอย่าง: 01-1234567/2564)";
-      showToast.error("รูปแบบรหัสไม่ถูกต้อง (ตัวอย่าง: 01-1234567/2564)");
+      newErrors.ceLicense = "กรุณากรอกและยืนยันรหัสสัตวแพทย์";
+      showToast.error("กรุณากรอกและยืนยันรหัสสัตวแพทย์");
+    } else if (!/^\d{2}-\d{3,7}\/\d{4}$/.test(formData.ceLicense.trim())) {
+      newErrors.ceLicense = "รูปแบบรหัสไม่ถูกต้อง กรุณากด 'ตรวจสอบ / รวมรหัส'";
+      showToast.error("รูปแบบรหัสไม่ถูกต้อง กรุณากด 'ตรวจสอบ / รวมรหัส'");
     }
     if (!formData.phone.trim()) {
       newErrors.phone = "กรุณากรอกเบอร์โทรศัพท์";
@@ -364,6 +376,45 @@ export default function SignUpForm() {
     }
 
     return newErrors;
+  };
+
+  // === License validation & combine ===
+  const validateLicenseParts = (): boolean => {
+    const newErrors = { prefix: "", mid: "", year: "" };
+    let valid = true;
+
+    if (!/^\d{2}$/.test(licensePrefix)) {
+      newErrors.prefix = "ต้องเป็นตัวเลข 2 หลักพอดี (เช่น 01)";
+      valid = false;
+    }
+    if (!/^\d{3,7}$/.test(licenseMid)) {
+      newErrors.mid = "ต้องเป็นตัวเลข 3–7 หลัก";
+      valid = false;
+    }
+    const yearNum = parseInt(licenseYear, 10);
+    if (!/^\d{4}$/.test(licenseYear) || yearNum < 2500 || yearNum > 2699) {
+      newErrors.year = "ต้องเป็นปี พ.ศ. 4 หลัก (2500–2699)";
+      valid = false;
+    }
+
+    setLicenseSubErrors(newErrors);
+    return valid;
+  };
+
+  const handleVerifyLicense = () => {
+    if (validateLicenseParts()) {
+      const combined = `${licensePrefix}-${licenseMid}/${licenseYear}`;
+      setFormData((prev) => ({ ...prev, ceLicense: combined }));
+      setLicenseVerified(true);
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.ceLicense;
+        return next;
+      });
+    } else {
+      setLicenseVerified(false);
+      setFormData((prev) => ({ ...prev, ceLicense: "" }));
+    }
   };
 
   const handleAddWorkplace = async () => {
@@ -1145,18 +1196,165 @@ export default function SignUpForm() {
           className="bg-white"
         />
 
-        <Input
-          label="รหัสสัตวแพทย์"
-          id="ceLicense"
-          name="ceLicense"
-          value={formData.ceLicense}
-          onChange={(e) => handleChange("ceLicense", e.target.value)}
-          placeholder="01-1234567/2564"
-          required
-          icon="medical_services"
-          error={errors.ceLicense}
-          className="bg-white"
-        />
+        {/* รหัสสัตวแพทย์ — 3 ช่องกรอก */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+            <span className="material-symbols-outlined text-base text-indigo-500">
+              medical_services
+            </span>
+            รหัสสัตวแพทย์
+            <span className="text-red-500">*</span>
+          </label>
+
+          <div className="grid grid-cols-3 gap-2">
+            {/* Input 1: prefix */}
+            <div>
+              <p className="text-xs text-gray-500 mb-1">รหัสนำหน้า (2 หลัก)</p>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={licensePrefix}
+                maxLength={2}
+                placeholder="01"
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 2);
+                  setLicensePrefix(val);
+                  setLicenseVerified(false);
+                  setFormData((prev) => ({ ...prev, ceLicense: "" }));
+                  if (licenseSubErrors.prefix)
+                    setLicenseSubErrors((p) => ({ ...p, prefix: "" }));
+                }}
+                className={`w-full px-3 py-2.5 border-2 rounded-xl text-center font-mono text-gray-700 bg-white focus:outline-none focus:ring-2 ${
+                  licenseSubErrors.prefix
+                    ? "border-red-400 focus:ring-red-300 focus:border-red-500"
+                    : "border-gray-200 focus:ring-blue-300 focus:border-blue-500"
+                }`}
+              />
+              {licenseSubErrors.prefix && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs">
+                    error
+                  </span>
+                  {licenseSubErrors.prefix}
+                </p>
+              )}
+            </div>
+            {/* Input 2: mid */}
+            <div>
+              <p className="text-xs text-gray-500 mb-1">รหัสกลาง (3–7 หลัก)</p>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={licenseMid}
+                maxLength={7}
+                placeholder="1234567"
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 7);
+                  setLicenseMid(val);
+                  setLicenseVerified(false);
+                  setFormData((prev) => ({ ...prev, ceLicense: "" }));
+                  if (licenseSubErrors.mid)
+                    setLicenseSubErrors((p) => ({ ...p, mid: "" }));
+                }}
+                className={`w-full px-3 py-2.5 border-2 rounded-xl text-center font-mono text-gray-700 bg-white focus:outline-none focus:ring-2 ${
+                  licenseSubErrors.mid
+                    ? "border-red-400 focus:ring-red-300 focus:border-red-500"
+                    : "border-gray-200 focus:ring-blue-300 focus:border-blue-500"
+                }`}
+              />
+              {licenseSubErrors.mid && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs">
+                    error
+                  </span>
+                  {licenseSubErrors.mid}
+                </p>
+              )}
+            </div>
+            {/* Input 3: yearBE */}
+            <div>
+              <p className="text-xs text-gray-500 mb-1">ปี พ.ศ. (4 หลัก)</p>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={licenseYear}
+                maxLength={4}
+                placeholder="2568"
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  setLicenseYear(val);
+                  setLicenseVerified(false);
+                  setFormData((prev) => ({ ...prev, ceLicense: "" }));
+                  if (licenseSubErrors.year)
+                    setLicenseSubErrors((p) => ({ ...p, year: "" }));
+                }}
+                className={`w-full px-3 py-2.5 border-2 rounded-xl text-center font-mono text-gray-700 bg-white focus:outline-none focus:ring-2 ${
+                  licenseSubErrors.year
+                    ? "border-red-400 focus:ring-red-300 focus:border-red-500"
+                    : "border-gray-200 focus:ring-blue-300 focus:border-blue-500"
+                }`}
+              />
+              {licenseSubErrors.year && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs">
+                    error
+                  </span>
+                  {licenseSubErrors.year}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Live preview */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200">
+            <span className="material-symbols-outlined text-gray-400 text-base">
+              preview
+            </span>
+            <span className="text-xs text-gray-500">ตัวอย่าง:</span>
+            <span className="font-mono text-sm font-semibold text-gray-800">
+              {licensePrefix || "??"}
+              <span className="text-gray-400">-</span>
+              {licenseMid || "???"}
+              <span className="text-gray-400">/</span>
+              {licenseYear || "????"}
+            </span>
+          </div>
+
+          {/* Verify button */}
+          <motion.button
+            type="button"
+            onClick={handleVerifyLicense}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className={`w-full py-2.5 px-4 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all duration-200 ${
+              licenseVerified
+                ? "bg-green-50 text-green-700 border-2 border-green-400"
+                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">
+              {licenseVerified ? "check_circle" : "verified"}
+            </span>
+            {licenseVerified
+              ? `ยืนยันแล้ว: ${formData.ceLicense}`
+              : "ตรวจสอบ / รวมรหัส"}
+          </motion.button>
+
+          {/* Form-level error */}
+          {errors.ceLicense && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-red-500 text-sm flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-base">error</span>
+              {errors.ceLicense}
+            </motion.p>
+          )}
+
+          {/* Hidden input for form submission */}
+          <input type="hidden" name="vet_code" value={formData.ceLicense} />
+        </div>
 
         <Input
           label="เบอร์โทรศัพท์"

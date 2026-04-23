@@ -35,12 +35,22 @@ interface SidebarProps {
   user: SidebarUser;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, user }) => {
+interface SidebarProps {
+  isOpen: boolean;
+  user: SidebarUser;
+  toggleSidebar?: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, user, toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isSatisfactionModalOpen, setIsSatisfactionModalOpen] = useState(false);
   const { isSubmitting, submitFeedback } = useFeedbackSubmission();
+
+  // Reference `toggleSidebar` to satisfy `noUnusedLocals` when the prop is provided
+  // but not used inside this component. This avoids TS6133 during `tsc -b`.
+  void toggleSidebar;
 
   const menuItems: SidebarMenuItem[] = useMemo(
     () => [

@@ -159,8 +159,15 @@ export default function AuthPage() {
 
           {/* Toggle Switch */}
           <div className="flex flex-col items-center mb-6 gap-2">
-            <div className="bg-gray-100 p-1 rounded-full flex shadow-inner">
+            <div
+              className="bg-gray-100 p-1 rounded-full flex shadow-inner"
+              role="tablist"
+              aria-label="เลือกการดำเนินการ"
+            >
               <motion.button
+                type="button"
+                role="tab"
+                aria-selected={authMode === "signin"}
                 onClick={() => setAuthMode("signin")}
                 className={`px-6 py-2 rounded-full relative cursor-pointer ${
                   authMode === "signin" ? "text-white" : "text-gray-600"
@@ -174,11 +181,19 @@ export default function AuthPage() {
                   />
                 )}
                 <span className="relative z-10 flex items-center gap-1">
-                  <span className="material-symbols-outlined">login</span>
+                  <span
+                    className="material-symbols-outlined"
+                    aria-hidden="true"
+                  >
+                    login
+                  </span>
                   เข้าสู่ระบบ
                 </span>
               </motion.button>
               <motion.button
+                type="button"
+                role="tab"
+                aria-selected={authMode === "signup"}
                 onClick={() => setAuthMode("signup")}
                 className={`px-6 py-2 rounded-full relative cursor-pointer ${
                   authMode === "signup" ? "text-white" : "text-gray-600"
@@ -192,7 +207,12 @@ export default function AuthPage() {
                   />
                 )}
                 <span className="relative z-10 flex items-center gap-1">
-                  <span className="material-symbols-outlined">person_add</span>
+                  <span
+                    className="material-symbols-outlined"
+                    aria-hidden="true"
+                  >
+                    person_add
+                  </span>
                   สมัครสมาชิก
                 </span>
               </motion.button>
@@ -246,7 +266,8 @@ export default function AuthPage() {
         <div className="absolute inset-0 overflow-hidden">
           <img
             src={images.bg_novel}
-            alt="Background"
+            alt=""
+            role="presentation"
             className="w-full h-full object-cover object-center"
           />
           {/* Overlay Gradient */}
@@ -257,7 +278,10 @@ export default function AuthPage() {
           <div className="text-center text-white w-full">
             {/* Logo/Icon */}
             <div className="inline-flex items-center justify-center w-16 h-16 bg-white/50 backdrop-blur-sm rounded-2xl mb-6 border border-white/20">
-              <span className="material-symbols-outlined text-4xl text-white">
+              <span
+                className="material-symbols-outlined text-4xl text-white"
+                aria-hidden="true"
+              >
                 pet_supplies
               </span>
             </div>
@@ -278,129 +302,191 @@ export default function AuthPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              {/* For Veterinarians */}
-              <div className="group/card bg-white/3 backdrop-blur-md rounded-2xl p-5 border border-white/10 hover:border-blue-400/40 hover:bg-white/8 transition-all duration-300">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-blue-500/20 rounded-xl group-hover/card:scale-110 transition-transform duration-300">
-                    <span className="material-symbols-outlined text-blue-300 text-xl">
-                      stethoscope
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-bold text-white tracking-wide">
-                    สัตวแพทย์
-                  </h3>
-                </div>
-                <ul className="space-y-1">
-                  <li>
-                    <button
-                      onClick={() =>
-                        window.open(
-                          window.location.origin + file.manualsystem,
-                          "_blank",
-                        )
-                      }
-                      className="flex items-center gap-3 py-2 text-sm text-white/60 hover:text-white w-full text-left transition-all group/btn"
+            {/* Skills / Resources Section */}
+            <section
+              aria-label="เอกสารและคู่มือสำหรับผู้ใช้งาน"
+              className="mb-8"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40 mb-3 text-left">
+                เอกสาร &amp; คู่มือ
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {/* For Veterinarians */}
+                <div
+                  role="group"
+                  aria-labelledby="card-vet-title"
+                  className="group/card bg-blue-500/10 backdrop-blur-md rounded-2xl p-4 border border-blue-400/25 hover:border-blue-400/50 hover:bg-blue-500/20 transition-all duration-300"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-1.5 bg-blue-500/25 rounded-lg group-hover/card:scale-110 transition-transform duration-300">
+                      <span
+                        className="material-symbols-outlined text-blue-300 text-lg"
+                        aria-hidden="true"
+                      >
+                        stethoscope
+                      </span>
+                    </div>
+                    <h3
+                      id="card-vet-title"
+                      className="text-sm font-bold text-white tracking-wide"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover/btn:bg-blue-500/40 transition-colors">
-                        <span className="material-symbols-outlined text-lg text-white/50 group-hover/btn:text-white">
+                      สัตวแพทย์
+                    </h3>
+                  </div>
+                  <ul className="space-y-0.5" role="list">
+                    <li>
+                      <button
+                        type="button"
+                        aria-label="คู่มือการใช้งานระบบสำหรับสัตวแพทย์ (เปิดในแท็บใหม่)"
+                        onClick={() =>
+                          window.open(
+                            window.location.origin + file.manualsystem,
+                            "_blank",
+                            "noopener,noreferrer",
+                          )
+                        }
+                        className="flex items-center gap-2.5 py-1.5 text-sm text-white/60 hover:text-white w-full text-left transition-all group/btn"
+                      >
+                        <span
+                          className="material-symbols-outlined text-base text-white/40 group-hover/btn:text-blue-300 transition-colors shrink-0"
+                          aria-hidden="true"
+                        >
                           menu_book
                         </span>
-                      </div>
-                      <span className="flex-1 font-medium">
-                        คู่มือการใช้งานระบบ
-                      </span>
-                      <span className="material-symbols-outlined text-sm opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all">
-                        north_east
-                      </span>
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() =>
-                        window.open(
-                          window.location.origin + file.manualresetpassword,
-                          "_blank",
-                        )
-                      }
-                      className="flex items-center gap-3 py-2 text-sm text-white/60 hover:text-white w-full text-left transition-all group/btn"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover/btn:bg-blue-500/40 transition-colors">
-                        <span className="material-symbols-outlined text-lg text-white/50 group-hover/btn:text-white">
+                        <span className="flex-1 font-medium truncate">
+                          คู่มือการใช้งานระบบ
+                        </span>
+                        <span
+                          className="material-symbols-outlined text-xs opacity-0 group-hover/btn:opacity-100 transition-opacity shrink-0"
+                          aria-hidden="true"
+                        >
+                          north_east
+                        </span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        aria-label="คู่มือการรีเซ็ตรหัสผ่านสำหรับสัตวแพทย์ (เปิดในแท็บใหม่)"
+                        onClick={() =>
+                          window.open(
+                            window.location.origin + file.manualresetpassword,
+                            "_blank",
+                            "noopener,noreferrer",
+                          )
+                        }
+                        className="flex items-center gap-2.5 py-1.5 text-sm text-white/60 hover:text-white w-full text-left transition-all group/btn"
+                      >
+                        <span
+                          className="material-symbols-outlined text-base text-white/40 group-hover/btn:text-blue-300 transition-colors shrink-0"
+                          aria-hidden="true"
+                        >
                           lock_reset
                         </span>
-                      </div>
-                      <span className="flex-1 font-medium">
-                        คู่มือการรีเซ็ตรหัสผ่าน
-                      </span>
-                      <span className="material-symbols-outlined text-sm opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all">
-                        north_east
-                      </span>
-                    </button>
-                  </li>
-                </ul>
-              </div>
-
-              {/* For Staff */}
-              <div className="group/card bg-white/3 backdrop-blur-md rounded-2xl p-5 border border-white/10 hover:border-purple-400/40 hover:bg-white/8 transition-all duration-300">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-purple-500/20 rounded-xl group-hover/card:scale-110 transition-transform duration-300">
-                    <span className="material-symbols-outlined text-purple-300 text-xl">
-                      badge
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-bold text-white tracking-wide">
-                    เจ้าหน้าที่
-                  </h3>
+                        <span className="flex-1 font-medium truncate">
+                          คู่มือการรีเซ็ตรหัสผ่าน
+                        </span>
+                        <span
+                          className="material-symbols-outlined text-xs opacity-0 group-hover/btn:opacity-100 transition-opacity shrink-0"
+                          aria-hidden="true"
+                        >
+                          north_east
+                        </span>
+                      </button>
+                    </li>
+                  </ul>
                 </div>
-                <ul className="space-y-1">
-                  <li>
-                    <button
-                      onClick={() =>
-                        window.open(
-                          window.location.origin + file.manualstaff,
-                          "_blank",
-                        )
-                      }
-                      className="flex items-center gap-3 py-2 text-sm text-white/60 hover:text-white w-full text-left transition-all group/btn"
+
+                {/* For Staff */}
+                <div
+                  role="group"
+                  aria-labelledby="card-staff-title"
+                  className="group/card bg-purple-500/10 backdrop-blur-md rounded-2xl p-4 border border-purple-400/25 hover:border-purple-400/50 hover:bg-purple-500/20 transition-all duration-300"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-1.5 bg-purple-500/25 rounded-lg group-hover/card:scale-110 transition-transform duration-300">
+                      <span
+                        className="material-symbols-outlined text-purple-300 text-lg"
+                        aria-hidden="true"
+                      >
+                        badge
+                      </span>
+                    </div>
+                    <h3
+                      id="card-staff-title"
+                      className="text-sm font-bold text-white tracking-wide"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover/btn:bg-purple-500/40 transition-colors">
-                        <span className="material-symbols-outlined text-lg text-white/50 group-hover/btn:text-white">
+                      เจ้าหน้าที่
+                    </h3>
+                  </div>
+                  <ul className="space-y-0.5" role="list">
+                    <li>
+                      <button
+                        type="button"
+                        aria-label="คู่มือการใช้งานระบบสำหรับเจ้าหน้าที่ (เปิดในแท็บใหม่)"
+                        onClick={() =>
+                          window.open(
+                            window.location.origin + file.manualstaff,
+                            "_blank",
+                            "noopener,noreferrer",
+                          )
+                        }
+                        className="flex items-center gap-2.5 py-1.5 text-sm text-white/60 hover:text-white w-full text-left transition-all group/btn"
+                      >
+                        <span
+                          className="material-symbols-outlined text-base text-white/40 group-hover/btn:text-purple-300 transition-colors shrink-0"
+                          aria-hidden="true"
+                        >
                           menu_book
                         </span>
-                      </div>
-                      <span className="flex-1 font-medium">
-                        คู่มือการใช้งานระบบ
-                      </span>
-                      <span className="material-symbols-outlined text-sm opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all">
-                        north_east
-                      </span>
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() =>
-                        window.open(window.location.origin + file.sop, "_blank")
-                      }
-                      className="flex items-center gap-3 py-2 text-sm text-white/60 hover:text-white w-full text-left transition-all group/btn"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover/btn:bg-purple-500/40 transition-colors">
-                        <span className="material-symbols-outlined text-lg text-white/50 group-hover/btn:text-white">
+                        <span className="flex-1 font-medium truncate">
+                          คู่มือการใช้งานระบบ
+                        </span>
+                        <span
+                          className="material-symbols-outlined text-xs opacity-0 group-hover/btn:opacity-100 transition-opacity shrink-0"
+                          aria-hidden="true"
+                        >
+                          north_east
+                        </span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        aria-label="เอกสาร SOP สำหรับเจ้าหน้าที่ (เปิดในแท็บใหม่)"
+                        onClick={() =>
+                          window.open(
+                            window.location.origin + file.sop,
+                            "_blank",
+                            "noopener,noreferrer",
+                          )
+                        }
+                        className="flex items-center gap-2.5 py-1.5 text-sm text-white/60 hover:text-white w-full text-left transition-all group/btn"
+                      >
+                        <span
+                          className="material-symbols-outlined text-base text-white/40 group-hover/btn:text-purple-300 transition-colors shrink-0"
+                          aria-hidden="true"
+                        >
                           description
                         </span>
-                      </div>
-                      <span className="flex-1 font-medium">SOP</span>
-                      <span className="material-symbols-outlined text-sm opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all">
-                        north_east
-                      </span>
-                    </button>
-                  </li>
-                </ul>
+                        <span className="flex-1 font-medium truncate">SOP</span>
+                        <span
+                          className="material-symbols-outlined text-xs opacity-0 group-hover/btn:opacity-100 transition-opacity shrink-0"
+                          aria-hidden="true"
+                        >
+                          north_east
+                        </span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
               </div>
-            </div>
+            </section>
 
             {/* Satisfaction Section - Prominent Card */}
             <motion.button
+              type="button"
+              aria-label="เปิดแบบประเมินความพึงพอใจ"
               onClick={() => setIsModalOpen(true)}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
@@ -410,7 +496,10 @@ export default function AuthPage() {
               <div className="absolute -inset-0.5 rounded-2xl border-2 border-yellow-400/20 pointer-events-none" />
               <div className="relative flex items-center gap-4">
                 <div className="shrink-0 w-12 h-12 bg-yellow-400/20 border border-yellow-400/50 rounded-xl flex items-center justify-center">
-                  <span className="material-symbols-outlined text-yellow-300 text-2xl">
+                  <span
+                    className="material-symbols-outlined text-yellow-300 text-2xl"
+                    aria-hidden="true"
+                  >
                     star
                   </span>
                 </div>
@@ -432,14 +521,17 @@ export default function AuthPage() {
                     แบ่งปันความคิดเห็นของคุณ
                   </p>
                 </div>
-                <span className="material-symbols-outlined text-yellow-300 group-hover:translate-x-1 transition-transform">
+                <span
+                  className="material-symbols-outlined text-yellow-300 group-hover:translate-x-1 transition-transform"
+                  aria-hidden="true"
+                >
                   chevron_right
                 </span>
               </div>
             </motion.button>
 
             {/* Footer Text */}
-            <p className=" text-white mt-6">
+            <p className="text-white mt-6">
               ศูนย์การเรียนรู้และส่งเสริมสุขภาพทางสัตวแพทย์ภาคเหนือ
             </p>
           </div>

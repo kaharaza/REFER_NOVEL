@@ -17,6 +17,7 @@ import { PutUpdateOwner, PutUpdatePet } from "../../../api/PutApi";
 import { useConfirmTailwind } from "../../../hook/useConfirmTailwind";
 import { DeleteOwner, DeletePet } from "../../../api/DeleteApi";
 import {
+  AlertCircle,
   ArrowBigDown,
   ArrowBigUp,
   ChevronLeft,
@@ -24,6 +25,79 @@ import {
   PlugIcon,
 } from "lucide-react";
 import { toLowerStr } from "../../../utils/helpers";
+
+type AddressFields = {
+  houseNumber: string;
+  road: string;
+  subdistrict: string;
+  district: string;
+  province: string;
+  postalCode: string;
+};
+
+const ADDRESS_FIELDS_CONFIG: Array<{
+  key: keyof AddressFields;
+  label: string;
+  required: boolean;
+  placeholder: string;
+  errorMsg: string;
+}> = [
+  {
+    key: "houseNumber",
+    label: "เลขที่บ้าน",
+    required: true,
+    placeholder: "เช่น 123/4 หมู่ 5",
+    errorMsg: "กรุณากรอกเลขที่บ้าน",
+  },
+  {
+    key: "road",
+    label: "ถนน",
+    required: false,
+    placeholder: "เช่น สุขุมวิท (ถ้ามี)",
+    errorMsg: "",
+  },
+  {
+    key: "subdistrict",
+    label: "ตำบล/แขวง",
+    required: true,
+    placeholder: "เช่น คลองตัน",
+    errorMsg: "กรุณากรอกตำบล/แขวง",
+  },
+  {
+    key: "district",
+    label: "อำเภอ/เขต",
+    required: true,
+    placeholder: "เช่น คลองเตย",
+    errorMsg: "กรุณากรอกอำเภอ/เขต",
+  },
+  {
+    key: "province",
+    label: "จังหวัด",
+    required: true,
+    placeholder: "เช่น กรุงเทพมหานคร",
+    errorMsg: "กรุณากรอกจังหวัด",
+  },
+  {
+    key: "postalCode",
+    label: "รหัสไปรษณีย์",
+    required: true,
+    placeholder: "เช่น 10110",
+    errorMsg: "กรุณากรอกรหัสไปรษณีย์ 5 หลัก",
+  },
+];
+
+const buildAddressString = (fields: AddressFields): string =>
+  [
+    fields.houseNumber,
+    fields.road,
+    fields.subdistrict,
+    fields.district,
+    fields.province,
+    fields.postalCode,
+  ]
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(" ");
 
 export default function VetsPage() {
   // === Get user login === //
@@ -42,6 +116,17 @@ export default function VetsPage() {
     email: "",
     address: "",
   });
+  const [addressFields, setAddressFields] = useState<AddressFields>({
+    houseNumber: "",
+    road: "",
+    subdistrict: "",
+    district: "",
+    province: "",
+    postalCode: "",
+  });
+  const [addressErrors, setAddressErrors] = useState<
+    Partial<Record<keyof AddressFields, string>>
+  >({});
   const [isEditingOwner, setIsEditingOwner] = useState(false);
 
   // Detect duplicate owner name (case-insensitive, trimmed).
@@ -58,6 +143,24 @@ export default function VetsPage() {
       return ofn === fn && oln === ln;
     });
   }, [owners, ownerForm.firstName, ownerForm.lastName, ownerForm.id]);
+
+  // Incomplete required address fields (for the summary banner)
+  const incompleteAddressFields = useMemo(() => {
+    const isLegacyMode =
+      isEditingOwner &&
+      !addressFields.subdistrict.trim() &&
+      !addressFields.district.trim() &&
+      !addressFields.province.trim() &&
+      !addressFields.postalCode.trim();
+    return ADDRESS_FIELDS_CONFIG.filter((cfg) => {
+      if (!cfg.required) return false;
+      if (isLegacyMode && cfg.key !== "houseNumber") return false;
+      const value = addressFields[cfg.key];
+      if (!value.trim()) return true;
+      if (cfg.key === "postalCode" && !/^\d{5}$/.test(value)) return true;
+      return false;
+    });
+  }, [addressFields, isEditingOwner]);
 
   const [petForm, setPetForm] = useState<FormPetProp>({
     name: "",
@@ -82,6 +185,9 @@ export default function VetsPage() {
   const { confirm, ConfirmModal } = useConfirmTailwind();
 
   // === useEffect === //
+  const addressRefs = useRef<
+    Partial<Record<keyof AddressFields, HTMLInputElement | null>>
+  >({});
   const useRefFetchDataOwners = useRef(false);
   useEffect(() => {
     if (useRefFetchDataOwners.current) return;
@@ -166,6 +272,74 @@ export default function VetsPage() {
     [],
   );
 
+  const changeAddressField = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value } = e.target;
+      const key = name as keyof AddressFields;
+      if (key === "postalCode") {
+        const onlyNums = value.replace(/[^0-9]/g, "");
+        if (onlyNums.length <= 5) {
+          setAddressFields((prev) => ({ ...prev, postalCode: onlyNums }));
+          setAddressErrors((prev) => ({ ...prev, postalCode: "" }));
+        }
+        return;
+      }
+      setAddressFields((prev) => ({ ...prev, [key]: value }));
+      setAddressErrors((prev) => ({ ...prev, [key]: "" }));
+    },
+    [],
+  );
+
+  const blurAddressField = useCallback(
+    (e: React.FocusEvent<HTMLInputElement>) => {
+      const key = e.target.name as keyof AddressFields;
+      const value = e.target.value;
+      const cfg = ADDRESS_FIELDS_CONFIG.find((c) => c.key === key);
+      if (!cfg || !cfg.required) return;
+      let error = "";
+      if (!value.trim()) {
+        error = cfg.errorMsg;
+      } else if (key === "postalCode" && !/^\d{5}$/.test(value)) {
+        error = "กรุณากรอกรหัสไปรษณีย์ 5 หลัก";
+      }
+      setAddressErrors((prev) => ({ ...prev, [key]: error }));
+    },
+    [],
+  );
+
+  const validateAddressFields = useCallback((): boolean => {
+    const isLegacyMode =
+      isEditingOwner &&
+      !addressFields.subdistrict.trim() &&
+      !addressFields.district.trim() &&
+      !addressFields.province.trim() &&
+      !addressFields.postalCode.trim();
+    const errors: Partial<Record<keyof AddressFields, string>> = {};
+    let hasError = false;
+    for (const cfg of ADDRESS_FIELDS_CONFIG) {
+      if (!cfg.required) continue;
+      if (isLegacyMode && cfg.key !== "houseNumber") continue;
+      const value = addressFields[cfg.key];
+      if (!value.trim()) {
+        errors[cfg.key] = cfg.errorMsg;
+        hasError = true;
+      } else if (cfg.key === "postalCode" && !/^\d{5}$/.test(value)) {
+        errors[cfg.key] = "กรุณากรอกรหัสไปรษณีย์ 5 หลัก";
+        hasError = true;
+      }
+    }
+    if (hasError) {
+      setAddressErrors(errors);
+      const firstErrorKey = ADDRESS_FIELDS_CONFIG.find(
+        (cfg) => errors[cfg.key],
+      )?.key;
+      if (firstErrorKey) {
+        addressRefs.current[firstErrorKey]?.focus();
+      }
+    }
+    return hasError;
+  }, [addressFields, isEditingOwner]);
+
   const changePetForm = useCallback(
     (
       e: React.ChangeEvent<
@@ -200,17 +374,13 @@ export default function VetsPage() {
       return true;
     }
 
-    // 4. ตรวจสอบที่อยู่ (เช่น ต้องมีความยาวอย่างน้อย 5 ตัวอักษร)
-    if (!ownerForm.address?.trim() || ownerForm.address.length < 5) {
-      showToast.error("กรุณากรอกที่อยู่ให้ครบถ้วน");
-      return true;
-    }
     return false;
   };
 
   // เพิ่มเจ้าของใหม่
   const addOwner = async () => {
     if (validateForm(ownerForm)) return;
+    if (validateAddressFields()) return;
     if (isDuplicateName) {
       showToast.info("มีชื่อนี้ซ้ำอยู่ในระบบ");
       return;
@@ -218,9 +388,16 @@ export default function VetsPage() {
 
     try {
       if (isEditingOwner) {
+        const isLegacyMode =
+          !addressFields.subdistrict.trim() &&
+          !addressFields.district.trim() &&
+          !addressFields.province.trim() &&
+          !addressFields.postalCode.trim();
         const payload: PayloadUpdateOwner = {
           id: ownerForm.id ?? "",
-          address: ownerForm.address,
+          address: isLegacyMode
+            ? addressFields.houseNumber
+            : buildAddressString(addressFields),
           email: ownerForm.email,
           firstName: ownerForm.firstName,
           lastName: ownerForm.lastName,
@@ -249,6 +426,7 @@ export default function VetsPage() {
       } else {
         const payload: PayloadCreatedOwner = {
           ...ownerForm,
+          address: buildAddressString(addressFields),
           veterinarianId: userLogin?.id ?? "",
           hospitalId: userLogin?.hospitalId || "",
         };
@@ -321,6 +499,16 @@ export default function VetsPage() {
       ...owner,
     });
     setIsEditingOwner(true);
+    // Pre-fill address: put existing address string in houseNumber for legacy migration
+    setAddressFields({
+      houseNumber: owner.address || "",
+      road: "",
+      subdistrict: "",
+      district: "",
+      province: "",
+      postalCode: "",
+    });
+    setAddressErrors({});
   };
 
   // ลบเจ้าของ
@@ -372,6 +560,15 @@ export default function VetsPage() {
       email: "",
       address: "",
     });
+    setAddressFields({
+      houseNumber: "",
+      road: "",
+      subdistrict: "",
+      district: "",
+      province: "",
+      postalCode: "",
+    });
+    setAddressErrors({});
     setIsEditingOwner(false);
   };
 
@@ -739,22 +936,245 @@ export default function VetsPage() {
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
             </div>
-            <div className="md:col-span-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                ที่อยู่ <span className="text-red-500">*</span>{" "}
-                <span className="text-xs text-gray-600">
-                  กรอกที่อยู่ บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์
-                  ให้ครบถ้วน
+            {/* ─── ที่อยู่ (แยกช่อง) ─── */}
+            <div className="md:col-span-4 space-y-3">
+              {/* Header + Summary Banner */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-gray-700">
+                  ที่อยู่ <span className="text-red-500">*</span>
                 </span>
-              </label>
-              <textarea
-                name="address"
-                placeholder="กรอกที่อยู่ (บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์)"
-                value={ownerForm.address}
-                onChange={changeOwnerForm}
-                rows={3}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
-              />
+                {incompleteAddressFields.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span className="font-medium">ที่อยู่ยังไม่ครบ:</span>
+                    {incompleteAddressFields.map((cfg, i) => (
+                      <button
+                        key={cfg.key}
+                        type="button"
+                        onClick={() => addressRefs.current[cfg.key]?.focus()}
+                        className="underline decoration-dotted text-amber-800 hover:text-amber-900 font-medium"
+                      >
+                        {cfg.label}
+                        {i < incompleteAddressFields.length - 1 ? "," : ""}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Legacy address migration notice (edit mode) */}
+              {isEditingOwner &&
+                addressFields.houseNumber &&
+                !addressFields.subdistrict &&
+                !addressFields.district &&
+                !addressFields.province &&
+                !addressFields.postalCode && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
+                    <span className="material-symbols-outlined text-base text-blue-500">
+                      info
+                    </span>
+                    <span>
+                      ที่อยู่เดิมถูกใส่ไว้ในช่อง <strong>เลขที่บ้าน</strong>{" "}
+                      สามารถล้างและกรอกแยกช่องเพื่อความถูกต้องได้
+                    </span>
+                  </div>
+                )}
+
+              {/* Row 1: เลขที่บ้าน | ถนน */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* เลขที่บ้าน */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    เลขที่บ้าน <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      ref={(el) => {
+                        addressRefs.current.houseNumber = el;
+                      }}
+                      type="text"
+                      name="houseNumber"
+                      placeholder="เช่น 123/4 หมู่ 5"
+                      value={addressFields.houseNumber}
+                      onChange={changeAddressField}
+                      onBlur={blurAddressField}
+                      className={`w-full border rounded-lg px-4 py-2.5 focus:ring-2 outline-none transition-all ${
+                        addressErrors.houseNumber
+                          ? "border-red-400 focus:ring-red-400/30 focus:border-red-400 bg-red-50 pr-9"
+                          : "border-gray-300 focus:ring-blue-500/30 focus:border-blue-500"
+                      }`}
+                    />
+                    {addressErrors.houseNumber && (
+                      <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500 pointer-events-none" />
+                    )}
+                  </div>
+                  {addressErrors.houseNumber && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {addressErrors.houseNumber}
+                    </p>
+                  )}
+                </div>
+
+                {/* ถนน */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    ถนน{" "}
+                    <span className="text-xs text-gray-400 font-normal">
+                      (ไม่บังคับ)
+                    </span>
+                  </label>
+                  <input
+                    ref={(el) => {
+                      addressRefs.current.road = el;
+                    }}
+                    type="text"
+                    name="road"
+                    placeholder="เช่น สุขุมวิท"
+                    value={addressFields.road}
+                    onChange={changeAddressField}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: ตำบล/แขวง | อำเภอ/เขต */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* ตำบล/แขวง */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    ตำบล/แขวง <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      ref={(el) => {
+                        addressRefs.current.subdistrict = el;
+                      }}
+                      type="text"
+                      name="subdistrict"
+                      placeholder="เช่น คลองตัน"
+                      value={addressFields.subdistrict}
+                      onChange={changeAddressField}
+                      onBlur={blurAddressField}
+                      className={`w-full border rounded-lg px-4 py-2.5 focus:ring-2 outline-none transition-all ${
+                        addressErrors.subdistrict
+                          ? "border-red-400 focus:ring-red-400/30 focus:border-red-400 bg-red-50 pr-9"
+                          : "border-gray-300 focus:ring-blue-500/30 focus:border-blue-500"
+                      }`}
+                    />
+                    {addressErrors.subdistrict && (
+                      <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500 pointer-events-none" />
+                    )}
+                  </div>
+                  {addressErrors.subdistrict && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {addressErrors.subdistrict}
+                    </p>
+                  )}
+                </div>
+
+                {/* อำเภอ/เขต */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    อำเภอ/เขต <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      ref={(el) => {
+                        addressRefs.current.district = el;
+                      }}
+                      type="text"
+                      name="district"
+                      placeholder="เช่น คลองเตย"
+                      value={addressFields.district}
+                      onChange={changeAddressField}
+                      onBlur={blurAddressField}
+                      className={`w-full border rounded-lg px-4 py-2.5 focus:ring-2 outline-none transition-all ${
+                        addressErrors.district
+                          ? "border-red-400 focus:ring-red-400/30 focus:border-red-400 bg-red-50 pr-9"
+                          : "border-gray-300 focus:ring-blue-500/30 focus:border-blue-500"
+                      }`}
+                    />
+                    {addressErrors.district && (
+                      <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500 pointer-events-none" />
+                    )}
+                  </div>
+                  {addressErrors.district && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {addressErrors.district}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 3: จังหวัด | รหัสไปรษณีย์ */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* จังหวัด */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    จังหวัด <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      ref={(el) => {
+                        addressRefs.current.province = el;
+                      }}
+                      type="text"
+                      name="province"
+                      placeholder="เช่น กรุงเทพมหานคร"
+                      value={addressFields.province}
+                      onChange={changeAddressField}
+                      onBlur={blurAddressField}
+                      className={`w-full border rounded-lg px-4 py-2.5 focus:ring-2 outline-none transition-all ${
+                        addressErrors.province
+                          ? "border-red-400 focus:ring-red-400/30 focus:border-red-400 bg-red-50 pr-9"
+                          : "border-gray-300 focus:ring-blue-500/30 focus:border-blue-500"
+                      }`}
+                    />
+                    {addressErrors.province && (
+                      <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500 pointer-events-none" />
+                    )}
+                  </div>
+                  {addressErrors.province && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {addressErrors.province}
+                    </p>
+                  )}
+                </div>
+
+                {/* รหัสไปรษณีย์ */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    รหัสไปรษณีย์ <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      ref={(el) => {
+                        addressRefs.current.postalCode = el;
+                      }}
+                      type="text"
+                      name="postalCode"
+                      placeholder="เช่น 10110"
+                      maxLength={5}
+                      value={addressFields.postalCode}
+                      onChange={changeAddressField}
+                      onBlur={blurAddressField}
+                      className={`w-full border rounded-lg px-4 py-2.5 focus:ring-2 outline-none transition-all ${
+                        addressErrors.postalCode
+                          ? "border-red-400 focus:ring-red-400/30 focus:border-red-400 bg-red-50 pr-9"
+                          : "border-gray-300 focus:ring-blue-500/30 focus:border-blue-500"
+                      }`}
+                    />
+                    {addressErrors.postalCode && (
+                      <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500 pointer-events-none" />
+                    )}
+                  </div>
+                  {addressErrors.postalCode && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {addressErrors.postalCode}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
